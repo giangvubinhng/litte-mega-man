@@ -30,18 +30,16 @@ def speak(text):
 
 def get_audio():
     r = sr.Recognizer()
-    print("listening.....")
     with sr.Microphone() as source:
         audio = r.listen(source)
         said = ""
 
         try:
             said = r.recognize_google(audio)
-            print(said)
         except Exception as e:
             print("Exception" + str(e))
 
-    return said
+    return said.lower()
 
 
 def authenticate_google():
@@ -88,9 +86,23 @@ def get_events(day, service):
 
     if not events:
         print('No upcoming events found.')
+        speak('No upcoming events found.')
+    else:
+        speak(f"you have {len(events)} events on this day.")
+        print(f"you have {len(events)} events on this day.")
     for event in events:
         start = event['start'].get('dateTime', event['start'].get('date'))
         print(start, event['summary'])
+        start_time = str(start.split("T")[1].split("-")[0])
+        if int(start_time.split(":")[0]) < 12:
+            start_time = start_time + "am"
+        else:
+            if (int(start_time.split(":")[0]) > 12):
+                start_time = str(int(start_time.split(
+                    ":")[0]) - 12) + start_time.split(":")[1]
+            start_time = start_time + "pm"
+
+        speak(event["summary"] + " at " + start_time)
 
 
 def get_date(text):
@@ -143,6 +155,20 @@ def get_date(text):
         return None
 
 
+WAKE = "mega"
 SERVICE = authenticate_google()
-text = get_audio()
-get_events(get_date(text), SERVICE)
+
+while True:
+    print("listening.....")
+    text = get_audio()
+    if text.count(WAKE) > 0:
+        speak("I am ready")
+        text = get_audio()
+        CALENDAR_STRS = ["what do i have", "do i have plans", "am i busy"]
+        for phrase in CALENDAR_STRS:
+            if phrase in text:
+                date = get_date(text)
+                if date:
+                    get_events(date, SERVICE)
+                else:
+                    speak("I don't understand")
